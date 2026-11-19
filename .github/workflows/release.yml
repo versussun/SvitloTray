@@ -1,0 +1,72 @@
+# Builds a ready-to-run Windows package and publishes it as a GitHub Release.
+# Trigger: push a version tag, e.g.
+#   git tag v1.1.0
+#   git push origin v1.1.0
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write # needed to create the release and upload the zip
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui-windows
+
+      - name: Read version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Publish (self-contained, win-x64)
+        shell: pwsh
+        run: >
+          dotnet publish SvitloTray.csproj
+          -f net10.0-windows10.0.19041.0
+          -c Release
+          -p:RuntimeIdentifierOverride=win-x64
+          -p:SelfContained=true
+          -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }}
+          -p:ApplicationVersion=${{ github.run_number }}
+          -o publish
+
+      - name: Zip
+        id: zip
+        shell: pwsh
+        run: |
+          Remove-Item publish\*.pdb -ErrorAction SilentlyContinue
+          $zip = "SvitloTray-${{ steps.version.outputs.version }}-win-x64.zip"
+          Compress-Archive -Path publish\* -DestinationPath $zip -CompressionLevel Optimal
+          "file=$zip" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Svitlo ${{ steps.version.outputs.version }}
+          files: ${{ steps.zip.outputs.file }}
+          generate_release_notes: true
+          body: |
+            ## Download / Завантаження
+
+            1. Download **${{ steps.zip.outputs.file }}** below.
+               Завантажте **${{ steps.zip.outputs.file }}** нижче.
+            2. Unpack it to any folder and run `SvitloTray.exe`. No .NET installation is needed.
+               Розпакуйте в будь-яку папку та запустіть `SvitloTray.exe`. Встановлювати .NET не потрібно.
+            3. If Windows SmartScreen warns about an unknown publisher, click **More info → Run anyway**.
+               Якщо Windows SmartScreen попереджає про невідомого видавця, натисніть **Докладніше → Виконати однаково**.
+
+            Requires Windows 10 1809+ or Windows 11 (x64).

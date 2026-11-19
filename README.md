@@ -12,6 +12,23 @@ Left click opens the window, right click opens the menu (Refresh, Open on the si
 
 The window shows the current state and a countdown, schedule bars for today and tomorrow, address selection, notifications N minutes before a change, a notice when the schedule changes or tomorrow's schedule appears, and autostart with Windows.
 
+## Download
+
+**[⬇ Latest release](https://github.com/versussun/SvitloTray/releases/latest)** — download `SvitloTray-<version>-win-x64.zip`, unpack it to any folder and run `SvitloTray.exe`. No .NET installation is needed. Requires Windows 10 1809+ or Windows 11 (x64).
+
+The app is not code-signed, so Windows SmartScreen may show "Windows protected your PC" on the first run: click **More info → Run anyway**.
+
+## Releasing a new version
+
+Releases are built by GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)). Push a version tag and the workflow builds a self-contained package, zips it and publishes a GitHub Release with the zip attached:
+
+```powershell
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+The version from the tag is stamped into the app (`ApplicationDisplayVersion`).
+
 ## Languages
 
 The interface is available in **Ukrainian** (default) and **English**. Switch it in *Address and settings → Language*; the window, tray tooltip, tray menu and notifications change right after saving.
