@@ -1,16 +1,24 @@
-# Builds a ready-to-run Windows package and publishes it as a GitHub Release.
+# Builds a ready-to-run Windows package (zip + installer) and publishes it as a GitHub Release.
 # Trigger: push a version tag, e.g.
 #   git tag v1.1.0
 #   git push origin v1.1.0
+# A manual run (Actions → Release → Run workflow) only builds and uploads the files
+# as workflow artifacts, without creating a release — useful for testing.
 name: Release
 
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for a test build (no release is created)"
+        required: true
+        default: "0.0.1"
 
 permissions:
-  contents: write # needed to create the release and upload the zip
+  contents: write # needed to create the release and upload the files
 
 jobs:
   release:
@@ -25,11 +33,14 @@ jobs:
       - name: Install MAUI workload
         run: dotnet workload install maui-windows
 
-      - name: Read version from tag
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Read version
         id: version
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart("v")
+          $version = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "${{ inputs.version }}" }
           "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Publish (self-contained, win-x64)
@@ -49,24 +60,50 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item publish\*.pdb -ErrorAction SilentlyContinue
-          $zip = "SvitloTray-${{ steps.version.outputs.version }}-win-x64.zip"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $zip = "dist\SvitloTray-${{ steps.version.outputs.version }}-win-x64.zip"
           Compress-Archive -Path publish\* -DestinationPath $zip -CompressionLevel Optimal
           "file=$zip" >> $env:GITHUB_OUTPUT
 
+      - name: Build installer
+        id: installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc /Qp "/DMyAppVersion=${{ steps.version.outputs.version }}" "/DSourceDir=$PWD\publish" "/DOutputDir=$PWD\dist" installer\SvitloTray.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "file=dist\SvitloTray-${{ steps.version.outputs.version }}-setup.exe" >> $env:GITHUB_OUTPUT
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SvitloTray-${{ steps.version.outputs.version }}
+          path: dist/*
+          compression-level: 0
+
       - name: Create GitHub Release
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           name: Svitlo ${{ steps.version.outputs.version }}
-          files: ${{ steps.zip.outputs.file }}
+          files: |
+            dist/SvitloTray-${{ steps.version.outputs.version }}-setup.exe
+            dist/SvitloTray-${{ steps.version.outputs.version }}-win-x64.zip
           generate_release_notes: true
           body: |
             ## Download / Завантаження
 
-            1. Download **${{ steps.zip.outputs.file }}** below.
-               Завантажте **${{ steps.zip.outputs.file }}** нижче.
-            2. Unpack it to any folder and run `SvitloTray.exe`. No .NET installation is needed.
-               Розпакуйте в будь-яку папку та запустіть `SvitloTray.exe`. Встановлювати .NET не потрібно.
-            3. If Windows SmartScreen warns about an unknown publisher, click **More info → Run anyway**.
-               Якщо Windows SmartScreen попереджає про невідомого видавця, натисніть **Докладніше → Виконати однаково**.
+            **Installer (recommended) / Інсталятор (рекомендовано):** `SvitloTray-${{ steps.version.outputs.version }}-setup.exe`
+            - Installs for the current user, no administrator rights needed; adds a Start menu shortcut and an uninstaller.
+            - Встановлюється для поточного користувача без прав адміністратора; додає ярлик у меню «Пуск» і деінсталятор.
+
+            **Portable / Портативна версія:** `SvitloTray-${{ steps.version.outputs.version }}-win-x64.zip`
+            - Unpack to any folder and run `SvitloTray.exe`.
+            - Розпакуйте в будь-яку папку та запустіть `SvitloTray.exe`.
+
+            No .NET installation is needed. Встановлювати .NET не потрібно.
+
+            If Windows SmartScreen warns about an unknown publisher, click **More info → Run anyway**.
+            Якщо Windows SmartScreen попереджає про невідомого видавця, натисніть **Докладніше → Виконати однаково**.
 
             Requires Windows 10 1809+ or Windows 11 (x64).
