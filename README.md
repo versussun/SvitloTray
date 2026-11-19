@@ -14,13 +14,18 @@ The window shows the current state and a countdown, schedule bars for today and 
 
 ## Download
 
-**[⬇ Latest release](https://github.com/versussun/SvitloTray/releases/latest)** — download `SvitloTray-<version>-win-x64.zip`, unpack it to any folder and run `SvitloTray.exe`. No .NET installation is needed. Requires Windows 10 1809+ or Windows 11 (x64).
+**[⬇ Latest release](https://github.com/versussun/SvitloTray/releases/latest)** — two options, no .NET installation needed either way:
+
+- **Installer** `SvitloTray-<version>-setup.exe` (recommended): installs for the current user into `%LocalAppData%\Programs\SvitloTray` without administrator rights, adds a Start menu shortcut and an uninstaller (Settings → Apps). Running a newer installer upgrades the app in place.
+- **Portable** `SvitloTray-<version>-win-x64.zip`: unpack to any folder and run `SvitloTray.exe`.
+
+Requires Windows 10 1809+ or Windows 11 (x64).
 
 The app is not code-signed, so Windows SmartScreen may show "Windows protected your PC" on the first run: click **More info → Run anyway**.
 
 ## Releasing a new version
 
-Releases are built by GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)). Push a version tag and the workflow builds a self-contained package, zips it and publishes a GitHub Release with the zip attached:
+Releases are built by GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)). Push a version tag and the workflow builds a self-contained package, makes the zip and the Inno Setup installer ([installer/SvitloTray.iss](installer/SvitloTray.iss)) and publishes a GitHub Release with both attached. A manual run (Actions → Release → Run workflow) builds the same files as workflow artifacts without creating a release.
 
 ```powershell
 git tag v1.1.0
