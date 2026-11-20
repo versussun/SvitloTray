@@ -18,6 +18,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<ScheduleService>();
         builder.Services.AddSingleton<AppController>();
         builder.Services.AddSingleton<MainPage>();
+        builder.Services.AddSingleton<WidgetPage>();
 
 #if WINDOWS
         builder.Services.AddSingleton<ITrayService, SvitloTray.WinUI.WindowsTrayService>();

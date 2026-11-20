@@ -120,6 +120,8 @@ public static class S
     public static string NoChangesExpected => T("Змін не очікується", "No changes expected");
     public static string TrayUpdateFailed => T("⚠ не вдалося оновити", "⚠ update failed");
     public static string MenuOpen => T("Відкрити", "Open");
+    public static string MenuShowWidget => T("Показати віджет", "Show desktop widget");
+    public static string MenuHideWidget => T("Приховати віджет", "Hide desktop widget");
     public static string MenuRefresh => T("Оновити зараз", "Refresh now");
     public static string MenuOpenSite => T("Відкрити на energy-ua.info", "Open on energy-ua.info");
     public static string MenuExit => T("Вихід", "Exit");
@@ -139,6 +141,7 @@ public static class S
     public static string UpdatedAt(string hm) => T($"Оновлено о {hm}", $"Updated at {hm}");
     public static string RefreshButton => T("Оновити", "Refresh");
     public static string SettingsButton(bool open) => T("Адреса та налаштування", "Address and settings") + (open ? " ▴" : " ▾");
+    public static string WidgetTitle => T("Світло", "Svitlo");
 
     // ---------- Settings ----------
     public static string DataSource => T("Джерело даних", "Data source");
@@ -162,6 +165,7 @@ public static class S
         "Notify when the schedule changes or tomorrow's schedule appears");
     public static string AutoStart => T("Запускати разом з Windows", "Start with Windows");
     public static string StartMinimized => T("Запускати згорнутим у трей", "Start minimized to tray");
+    public static string ShowDesktopWidget => T("Показувати віджет на робочому столі", "Show desktop widget");
     public static string LanguageSection => T("Мова", "Language");
     public static string LanguagePickerTitle => T("Мова інтерфейсу", "Interface language");
     public static string Save => T("Зберегти", "Save");

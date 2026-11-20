@@ -7,13 +7,15 @@ namespace SvitloTray.Services;
 public sealed class AppController
 {
     readonly ScheduleService _svc;
+    readonly SettingsStore _settings;
     readonly ITrayService _tray;
     readonly IPlatformIntegration _platform;
     bool _started;
 
-    public AppController(ScheduleService svc, ITrayService tray, IPlatformIntegration platform)
+    public AppController(ScheduleService svc, SettingsStore settings, ITrayService tray, IPlatformIntegration platform)
     {
         _svc = svc;
+        _settings = settings;
         _tray = tray;
         _platform = platform;
     }
@@ -26,6 +28,7 @@ public sealed class AppController
 
         _tray.Initialize();
         _tray.OpenRequested += () => _platform.ShowMainWindow();
+        _tray.WidgetToggleRequested += () => SetWidgetVisible(!_svc.Settings.ShowWidget);
         _tray.RefreshRequested += () => _ = _svc.RefreshAsync();
         _tray.OpenSiteRequested += OpenSite;
         _tray.ExitRequested += Exit;
@@ -33,7 +36,21 @@ public sealed class AppController
         _svc.Changed += () => MainThread.BeginInvokeOnMainThread(UpdateTray);
         _svc.Notify += (title, text) => MainThread.BeginInvokeOnMainThread(() => _tray.ShowNotification(title, text));
         Loc.LanguageChanged += () => MainThread.BeginInvokeOnMainThread(UpdateTray);
+        SetWidgetVisible(_svc.Settings.ShowWidget);
         _svc.Start();
+    }
+
+    public void SetWidgetVisible(bool visible)
+    {
+        if (_svc.Settings.ShowWidget != visible)
+        {
+            var settings = _svc.Settings.Clone();
+            settings.ShowWidget = visible;
+            _settings.Save(settings);
+        }
+
+        _tray.SetWidgetVisible(visible);
+        _platform.SetWidgetVisible(visible);
     }
 
     void UpdateTray() => _tray.Update(TrayStateBuilder.Build(_svc, TimeZones.NowKyiv()));

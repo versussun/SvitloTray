@@ -10,9 +10,11 @@ public interface ITrayService : IDisposable
 {
     void Initialize();
     void Update(TrayState state);
+    void SetWidgetVisible(bool visible);
     void ShowNotification(string title, string text);
 
     event Action? OpenRequested;
+    event Action? WidgetToggleRequested;
     event Action? RefreshRequested;
     event Action? OpenSiteRequested;
     event Action? ExitRequested;
@@ -22,6 +24,7 @@ public interface ITrayService : IDisposable
 public interface IPlatformIntegration
 {
     void ShowMainWindow();
+    void SetWidgetVisible(bool visible);
     void ExitApp();
     void SetAutoStart(bool enabled);
 
@@ -37,11 +40,13 @@ public sealed class NullTrayService : ITrayService
 {
     public void Initialize() { }
     public void Update(TrayState state) { }
+    public void SetWidgetVisible(bool visible) { }
     public void ShowNotification(string title, string text) { }
     public void Dispose() { }
 
 #pragma warning disable CS0067 // event is never used
     public event Action? OpenRequested;
+    public event Action? WidgetToggleRequested;
     public event Action? RefreshRequested;
     public event Action? OpenSiteRequested;
     public event Action? ExitRequested;
@@ -51,6 +56,7 @@ public sealed class NullTrayService : ITrayService
 public sealed class NullPlatformIntegration : IPlatformIntegration
 {
     public void ShowMainWindow() { }
+    public void SetWidgetVisible(bool visible) { }
     public void ExitApp() => Application.Current?.Quit();
     public void SetAutoStart(bool enabled) { }
     public void GrowWindowBy(double dips) { }
