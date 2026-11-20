@@ -8,9 +8,11 @@ The notification area icon shows how much time is left until the power state cha
 - more than 99 minutes is shown in hours (`3h` in English, `3г` in Ukrainian); `—` means no changes until the end of the known schedule.
 
 Hovering shows a tooltip, e.g. "Power is on / Outage at 15:00 (in 1 h 25 min) / Прилуки, Земська 65 · queue 2.1".
-Left click opens the window, right click opens the menu (Refresh, Open on the site, Exit). The window's close button hides it to the tray.
+Left click opens the window, right click opens the menu (show/hide widget, Refresh, Open on the site, Exit). The window's close button hides it to the tray.
 
-The window shows the current state and a countdown, schedule bars for today and tomorrow, address selection, notifications N minutes before a change, a notice when the schedule changes or tomorrow's schedule appears, and autostart with Windows.
+The optional desktop widget is a compact, frameless, always-on-top window with the current state, next change, address and last update time. Enable it in **Address and settings → Notifications and startup**, or toggle it from the tray icon's context menu. It opens near the lower-right corner of the current monitor.
+
+The main window shows the current state and a countdown, schedule bars for today and tomorrow, address selection, notifications N minutes before a change, a notice when the schedule changes or tomorrow's schedule appears, and autostart with Windows.
 
 ## Download
 
@@ -99,7 +101,8 @@ Core/                     logic without UI
   Format.cs               texts: "in 1 h 25 min", "tomorrow at 08:30", icon digits
   Localization.cs         Ukrainian and English strings, current language
 Services/                 glue between the tray, the window and the service
-Views/                    MAUI window (C# without XAML), address picker, schedule bar
+Views/                    MAUI windows (C# without XAML), address picker, schedule bar
+  WidgetPage.cs           compact desktop status widget
 Platforms/Windows/
   NativeTrayIcon.cs       Win32 tray icon (Shell_NotifyIcon), menu, notifications
   TrayIconRenderer.cs     drawing the icon with digits (System.Drawing)

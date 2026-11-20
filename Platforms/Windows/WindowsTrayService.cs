@@ -7,8 +7,10 @@ public sealed class WindowsTrayService : ITrayService
 {
     NativeTrayIcon? _icon;
     string _lastIconKey = "";
+    bool _widgetVisible;
 
     public event Action? OpenRequested;
+    public event Action? WidgetToggleRequested;
     public event Action? RefreshRequested;
     public event Action? OpenSiteRequested;
     public event Action? ExitRequested;
@@ -24,6 +26,7 @@ public sealed class WindowsTrayService : ITrayService
         _icon.MenuFactory = () => new List<TrayMenuItem>
         {
             new(S.MenuOpen, () => OpenRequested?.Invoke(), IsDefault: true),
+            new(_widgetVisible ? S.MenuHideWidget : S.MenuShowWidget, () => WidgetToggleRequested?.Invoke()),
             new(S.MenuRefresh, () => RefreshRequested?.Invoke()),
             new(S.MenuOpenSite, () => OpenSiteRequested?.Invoke()),
             TrayMenuItem.Separator,
@@ -49,6 +52,8 @@ public sealed class WindowsTrayService : ITrayService
     }
 
     public void ShowNotification(string title, string text) => _icon?.ShowBalloon(title, text);
+
+    public void SetWidgetVisible(bool visible) => _widgetVisible = visible;
 
     public void Dispose()
     {

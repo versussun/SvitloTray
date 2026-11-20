@@ -28,6 +28,7 @@ public sealed class AppSettings
     public bool NotifyOnScheduleChange { get; set; } = true;
     public bool StartMinimized { get; set; }
     public bool AutoStart { get; set; }
+    public bool ShowWidget { get; set; }
 
     /// <summary>Interface language.</summary>
     public AppLanguage Language { get; set; } = AppLanguage.Ukrainian;

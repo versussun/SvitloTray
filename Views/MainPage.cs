@@ -25,6 +25,7 @@ public sealed class MainPage : ContentPage
     readonly ScheduleService _svc;
     readonly EnergyUaClient _client;
     readonly IPlatformIntegration _platform;
+    readonly AppController _controller;
 
     // State card
     readonly Border _card;
@@ -42,8 +43,8 @@ public sealed class MainPage : ContentPage
     readonly Picker _modePicker, _queuePicker, _notifyPicker, _languagePicker;
     readonly SearchList _cityList, _streetList, _houseList;
     readonly Entry _linkEntry;
-    readonly CheckBox _changeNotifyBox, _autoStartBox, _minimizedBox;
-    readonly Label _changeNotifyLabel, _autoStartLabel, _minimizedLabel;
+    readonly CheckBox _changeNotifyBox, _autoStartBox, _minimizedBox, _widgetBox;
+    readonly Label _changeNotifyLabel, _autoStartLabel, _minimizedLabel, _widgetLabel;
     readonly Label _sourceSection, _notifySection, _languageSection;
     readonly Label _settingsError;
     readonly Button _saveButton, _cancelButton;
@@ -55,11 +56,12 @@ public sealed class MainPage : ContentPage
     bool _applyingTexts;
     int _loadVersion;
 
-    public MainPage(ScheduleService svc, EnergyUaClient client, IPlatformIntegration platform)
+    public MainPage(ScheduleService svc, EnergyUaClient client, IPlatformIntegration platform, AppController controller)
     {
         _svc = svc;
         _client = client;
         _platform = platform;
+        _controller = controller;
         _draft = svc.Settings.Clone();
 
         // ---- card ----
@@ -115,9 +117,11 @@ public sealed class MainPage : ContentPage
         _changeNotifyBox = new CheckBox();
         _autoStartBox = new CheckBox();
         _minimizedBox = new CheckBox();
+        _widgetBox = new CheckBox();
         _changeNotifyLabel = CheckLabel(_changeNotifyBox);
         _autoStartLabel = CheckLabel(_autoStartBox);
         _minimizedLabel = CheckLabel(_minimizedBox);
+        _widgetLabel = CheckLabel(_widgetBox);
         _sourceSection = SectionTitle();
         _notifySection = SectionTitle();
         _languageSection = SectionTitle();
@@ -144,6 +148,7 @@ public sealed class MainPage : ContentPage
                 CheckRow(_changeNotifyBox, _changeNotifyLabel),
                 CheckRow(_autoStartBox, _autoStartLabel),
                 CheckRow(_minimizedBox, _minimizedLabel),
+                CheckRow(_widgetBox, _widgetLabel),
                 _languageSection,
                 _languagePicker,
                 _settingsError,
@@ -230,6 +235,7 @@ public sealed class MainPage : ContentPage
             _changeNotifyLabel.Text = S.NotifyOnChange;
             _autoStartLabel.Text = S.AutoStart;
             _minimizedLabel.Text = S.StartMinimized;
+            _widgetLabel.Text = S.ShowDesktopWidget;
 
             _saveButton.Text = S.Save;
             _cancelButton.Text = S.Cancel;
@@ -395,6 +401,7 @@ public sealed class MainPage : ContentPage
         _changeNotifyBox.IsChecked = _draft.NotifyOnScheduleChange;
         _autoStartBox.IsChecked = _draft.AutoStart;
         _minimizedBox.IsChecked = _draft.StartMinimized;
+        _widgetBox.IsChecked = _draft.ShowWidget;
         _languagePicker.SelectedIndex = Math.Max(0, Loc.All.ToList().IndexOf(_draft.Language));
 
         _cityList.Preselect(_draft.City);
@@ -528,6 +535,7 @@ public sealed class MainPage : ContentPage
         s.NotifyOnScheduleChange = _changeNotifyBox.IsChecked;
         s.AutoStart = _autoStartBox.IsChecked;
         s.StartMinimized = _minimizedBox.IsChecked;
+        s.ShowWidget = _widgetBox.IsChecked;
         if (_languagePicker.SelectedIndex >= 0) s.Language = Loc.All[_languagePicker.SelectedIndex];
 
         try
@@ -543,6 +551,7 @@ public sealed class MainPage : ContentPage
 
         _platform.SetAutoStart(s.AutoStart);
         _svc.ApplySettings(s);
+        _controller.SetWidgetVisible(s.ShowWidget);
         ToggleSettings();
     }
 }
