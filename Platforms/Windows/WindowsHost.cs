@@ -27,6 +27,14 @@ public static class WindowsHost
     const uint SWP_NOZORDER = 0x0004;
     const uint SWP_NOACTIVATE = 0x0010;
     const uint SWP_FRAMECHANGED = 0x0020;
+    const int GWLP_WNDPROC = -4;
+    const uint GW_HWNDPREV = 3;
+    const uint WM_WINDOWPOSCHANGING = 0x0046;
+
+    // Desktop widget z-order: the widget sits right above the desktop and never rises above other windows.
+    static WndProc? _widgetWndProc; // keeps the delegate alive while the native window uses it
+    static IntPtr _widgetPrevWndProc;
+    static bool _widgetZOrderChangeAllowed;
 
     static Microsoft.UI.Xaml.Window? _window;
     static AppWindow? _appWindow;
@@ -135,7 +143,7 @@ public static class WindowsHost
             presenter.IsResizable = false;
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
-            presenter.IsAlwaysOnTop = true;
+            presenter.IsAlwaysOnTop = false; // a desktop widget: every other window must cover it
         }
 
         var hwnd = WindowNative.GetWindowHandle(window);
@@ -149,6 +157,109 @@ public static class WindowsHost
         appWindow.Move(new Windows.Graphics.PointInt32(
             work.X + work.Width - widgetWidth - 24,
             work.Y + work.Height - widgetHeight - 24));
+        KeepWidgetOnDesktop(hwnd);
+    }
+
+    /// <summary>
+    /// Pins the widget to the desktop layer: puts it directly above the desktop window
+    /// and blocks any later z-order change (activation, a click on the widget),
+    /// so every normal window always covers it.
+    /// </summary>
+    static void KeepWidgetOnDesktop(IntPtr hwnd)
+    {
+        if (_widgetWndProc is null)
+        {
+            var proc = new WndProc(WidgetWindowProc);
+            var prev = SetWindowLongPtrW(hwnd, GWLP_WNDPROC, Marshal.GetFunctionPointerForDelegate(proc));
+            if (prev == IntPtr.Zero)
+            {
+                WidgetLog($"subclass failed: {Marshal.GetLastWin32Error()}");
+            }
+            else
+            {
+                _widgetPrevWndProc = prev;
+                _widgetWndProc = proc;
+            }
+        }
+        SendWidgetToDesktop(hwnd);
+    }
+
+    /// <summary>
+    /// Moves the widget in the z-order to right above the desktop icons window.
+    /// Best effort: a failure here must never take the app down.
+    /// </summary>
+    static void SendWidgetToDesktop(IntPtr hwnd)
+    {
+        var desktop = FindDesktopWindow();
+        if (desktop == IntPtr.Zero)
+        {
+            WidgetLog("desktop window not found");
+            return;
+        }
+
+        _widgetZOrderChangeAllowed = true;
+        try
+        {
+            // SetWindowPos(hwnd, X) places hwnd directly behind X. Right above the desktop there are
+            // usually only invisible system windows, and some of them refuse to be used as X
+            // (e.g. ctfmon's window fails with ERROR_ACCESS_DENIED), so walk up until one is accepted.
+            var after = GetWindow(desktop, GW_HWNDPREV);
+            for (int i = 0; i < 64 && after != IntPtr.Zero; i++)
+            {
+                if (after == hwnd) return; // already right above the desktop
+                if (SetWindowPos(hwnd, after, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)) return;
+                after = GetWindow(after, GW_HWNDPREV);
+            }
+        }
+        catch (Exception ex)
+        {
+            WidgetLog("z-order error: " + ex);
+        }
+        finally
+        {
+            _widgetZOrderChangeAllowed = false;
+        }
+    }
+
+    static void WidgetLog(string message) =>
+        System.Diagnostics.Debug.WriteLine("[SvitloTray widget] " + message);
+
+    /// <summary>
+    /// The top-level window that shows the desktop icons (SHELLDLL_DefView): Progman,
+    /// or a WorkerW when a wallpaper slideshow/engine has split the desktop.
+    /// </summary>
+    static IntPtr FindDesktopWindow()
+    {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((window, _) =>
+        {
+            if (FindWindowExW(window, IntPtr.Zero, "SHELLDLL_DefView", null) == IntPtr.Zero) return true;
+            found = window;
+            return false;
+        }, IntPtr.Zero);
+        return found != IntPtr.Zero ? found : GetShellWindow();
+    }
+
+    static IntPtr WidgetWindowProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
+    {
+        try
+        {
+            // Activation or a click would bring the widget to the front: keep its place in the z-order.
+            if (msg == WM_WINDOWPOSCHANGING && !_widgetZOrderChangeAllowed && lParam != IntPtr.Zero)
+            {
+                var pos = Marshal.PtrToStructure<WINDOWPOS>(lParam);
+                if ((pos.flags & SWP_NOZORDER) == 0)
+                {
+                    pos.flags |= SWP_NOZORDER;
+                    Marshal.StructureToPtr(pos, lParam, fDeleteOld: false);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // An exception must not escape into native code.
+        }
+        return CallWindowProcW(_widgetPrevWndProc, hwnd, msg, wParam, lParam);
     }
 
     static void SetWidgetRegion(Microsoft.UI.Xaml.Window window, int width, int height, int cornerRadius)
@@ -241,8 +352,17 @@ public static class WindowsHost
 
     static void ShowWidget()
     {
-        _widgetAppWindow?.Show();
-        _widgetWindow?.Activate();
+        if (_widgetWindow is null || _widgetAppWindow is null) return;
+        try
+        {
+            // Show without activating, so the widget does not jump above the window the user works in.
+            _widgetAppWindow.Show(false);
+            SendWidgetToDesktop(WindowNative.GetWindowHandle(_widgetWindow));
+        }
+        catch (Exception ex)
+        {
+            WidgetLog("show error: " + ex);
+        }
     }
 
     public static void ShowMainWindow()
@@ -337,11 +457,43 @@ public static class WindowsHost
     [DllImport("user32.dll", SetLastError = true)]
     static extern bool GetCursorPos(out POINT point);
 
+    [DllImport("user32.dll")]
+    static extern IntPtr CallWindowProcW(IntPtr prevWndProc, IntPtr window, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    static extern IntPtr GetWindow(IntPtr window, uint command);
+
+    [DllImport("user32.dll")]
+    static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern IntPtr FindWindowExW(IntPtr parent, IntPtr childAfter, string? className, string? windowName);
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    delegate IntPtr WndProc(IntPtr window, uint msg, IntPtr wParam, IntPtr lParam);
+
+    delegate bool EnumWindowsProc(IntPtr window, IntPtr lParam);
+
     [StructLayout(LayoutKind.Sequential)]
     struct POINT
     {
         public int X;
         public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct WINDOWPOS
+    {
+        public IntPtr hwnd;
+        public IntPtr hwndInsertAfter;
+        public int x;
+        public int y;
+        public int cx;
+        public int cy;
+        public uint flags;
     }
 }
 
