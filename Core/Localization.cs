@@ -150,7 +150,7 @@ public static class S
     public static string ModeQueue => T("За номером черги", "By queue number");
     public static string ModeLink => T("За посиланням energy-ua.info", "By energy-ua.info link");
     public static string City => T("Населений пункт", "Settlement");
-    public static string CityPlaceholder => T("Почніть вводити, наприклад: Прилуки", "Start typing, e.g. Прилуки");
+    public static string CityPlaceholder => T("Почніть вводити, наприклад: Чернігів", "Start typing, e.g. Чернігів");
     public static string Street => T("Вулиця", "Street");
     public static string StreetPlaceholder => T("Почніть вводити назву вулиці", "Start typing the street name");
     public static string House => T("Будинок", "House");

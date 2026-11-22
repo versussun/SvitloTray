@@ -15,12 +15,12 @@ public sealed class AppSettings
     public string BaseUrl { get; set; } = EnergyUaClient.DefaultBaseUrl;
     public SourceMode Mode { get; set; } = SourceMode.Address;
 
-    // Defaults to the address from the original link.
-    public string City { get; set; } = "Прилуки";
-    public string Street { get; set; } = "Земська";
-    public string House { get; set; } = "65";
+    // No address by default: on the first run the user picks their own one in the settings.
+    public string City { get; set; } = "";
+    public string Street { get; set; } = "";
+    public string House { get; set; } = "";
 
-    public string Queue { get; set; } = "2.1";
+    public string Queue { get; set; } = "1.1";
     public string Link { get; set; } = "";
 
     /// <summary>How many minutes before a state change to warn (0 — off).</summary>
@@ -65,7 +65,15 @@ public sealed class AppSettings
     {
         SourceMode.Queue => S.QueueName(Queue),
         SourceMode.Link => Uri.TryCreate(Link, UriKind.Absolute, out var u) ? Uri.UnescapeDataString(u.AbsolutePath) : Link,
-        _ => $"{City}, {Street} {House}",
+        _ => string.IsNullOrWhiteSpace(City) ? S.ErrAddressEmpty : $"{City}, {Street} {House}",
+    };
+
+    [JsonIgnore]
+    public bool HasSource => Mode switch
+    {
+        SourceMode.Queue => !string.IsNullOrWhiteSpace(Queue),
+        SourceMode.Link => !string.IsNullOrWhiteSpace(Link),
+        _ => !string.IsNullOrWhiteSpace(City) && !string.IsNullOrWhiteSpace(Street) && !string.IsNullOrWhiteSpace(House),
     };
 }
 

@@ -86,7 +86,7 @@ public static class EnergyUaParser
         return text.Length == 0 ? null : text;
     }
 
-    /// <summary>Strips the site's "Графік відключення електроенергії" prefix, leaving "Прилуки, Земська 65".</summary>
+    /// <summary>Strips the site's "Графік відключення електроенергії" prefix, leaving "&lt;settlement&gt;, &lt;street&gt; &lt;house&gt;".</summary>
     public static string? CleanTitle(string? title)
     {
         if (string.IsNullOrWhiteSpace(title)) return null;

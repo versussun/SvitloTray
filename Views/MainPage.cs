@@ -197,6 +197,9 @@ public sealed class MainPage : ContentPage
     {
         base.OnAppearing();
         Render();
+
+        // First run: no address yet — open the settings right away.
+        if (!_svc.Settings.HasSource && !_settingsPanel.IsVisible) ToggleSettings();
     }
 
     // ================= Static texts =================
